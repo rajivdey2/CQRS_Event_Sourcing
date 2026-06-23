@@ -1,12 +1,11 @@
 services:
-  # ── Backend API ─────────────────────────────────────────────────────────────
   - type: web
     name: cqrs-ledger-api
     runtime: python
     region: oregon
     plan: free
     rootDir: backend
-    buildCommand: pip install -e ".[dev]"
+    buildCommand: pip install -e "."
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
@@ -19,10 +18,11 @@ services:
       - key: ENV
         value: production
       - key: CORS_ORIGINS
-        value: '["https://cqrs-ledger.vercel.app"]'   # update after Vercel deploy
+        value: '["https://cqrs-ledger.vercel.app"]'
+      - key: PYTHON_VERSION
+        value: "3.12.0"
 
 databases:
-  # ── Managed Postgres ─────────────────────────────────────────────────────────
   - name: cqrs-ledger-db
     plan: free
     region: oregon

@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
+import asyncio
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,11 +29,28 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
+async def _wait_for_db(retries: int = 10, delay: float = 3.0) -> None:
+    """
+    Render starts the web service before the managed Postgres is fully ready.
+    Retry the connection with backoff so startup doesn't fail on a race.
+    """
+    for attempt in range(1, retries + 1):
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            logger.info("Database reachable on attempt %d", attempt)
+            return
+        except Exception as e:
+            logger.warning("DB not ready (attempt %d/%d): %s", attempt, retries, e)
+            if attempt == retries:
+                raise RuntimeError("Database never became reachable") from e
+            await asyncio.sleep(delay)
+
+
 async def _init_schema() -> None:
     """
-    Run init.sql on startup if tables don't exist yet.
-    Idempotent — uses IF NOT EXISTS throughout.
-    Safe to run on every cold start (Render free tier spins down).
+    Run init.sql on startup — idempotent (IF NOT EXISTS throughout).
+    Safe to run on every cold start; Render free tier spins down regularly.
     """
     import os
     sql_path = os.path.join(os.path.dirname(__file__), "..", "init.sql")
@@ -49,6 +67,8 @@ async def _init_schema() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ───────────────────────────────────────────────────────────────
+    logger.info("Connecting to database: %s", settings.async_database_url[:40] + "…")
+    await _wait_for_db()
     await _init_schema()
 
     balance_proj     = BalanceProjector(AsyncSessionLocal)

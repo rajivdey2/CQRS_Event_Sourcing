@@ -25,6 +25,8 @@ class Settings(BaseSettings):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         return url
 
+      
+
 
 @lru_cache
 def get_settings() -> Settings:
