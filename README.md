@@ -6,8 +6,8 @@ A production-grade bank account ledger demonstrating **CQRS** (Command Query Res
 
 ## Live Demo
 
-> `docker compose up` → [http://localhost:3000](http://localhost:3000)
-> API docs → [http://localhost:8000/docs](http://localhost:8000/docs)
+> Vercel -> [https://cqrs-event-sourcing-q1vzpzcc9-rajivdey2s-projects.vercel.app](https://cqrs-event-sourcing-q1vzpzcc9-rajivdey2s-projects.vercel.app)
+> API docs -> [https://cqrs-event-sourcing.onrender.com/docs](https://cqrs-event-sourcing.onrender.com/docs)
 
 ---
 
