@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  body {
+    background-color: #0A0F1E;
+    color: #E2E8F0;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  /* Tabular numbers everywhere balances/amounts appear */
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #141929; }
+  ::-webkit-scrollbar-thumb { background: #1E2940; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #6366F1; }
+}
+
+@layer components {
+  .card {
+    background: #141929;
+    border: 1px solid #1E2940;
+    border-radius: 12px;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white font-medium px-4 py-2 rounded-lg text-sm
+           hover:bg-indigo-500 active:scale-95 transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  .btn-ghost {
+    @apply text-muted text-sm font-medium px-3 py-1.5 rounded-lg
+           hover:bg-white/5 hover:text-white transition-all duration-150;
+  }
+
+  .input {
+    @apply w-full bg-base border border-border rounded-lg px-3 py-2 text-sm
+           text-white placeholder-muted outline-none
+           focus:border-primary focus:ring-1 focus:ring-primary/30
+           transition-colors duration-150;
+  }
+
+  .badge-deposited {
+    @apply inline-flex items-center gap-1 text-xs font-medium
+           text-emerald bg-emerald/10 px-2 py-0.5 rounded-full;
+  }
+
+  .badge-withdrawn {
+    @apply inline-flex items-center gap-1 text-xs font-medium
+           text-rose bg-rose/10 px-2 py-0.5 rounded-full;
+  }
+
+  .badge-opened {
+    @apply inline-flex items-center gap-1 text-xs font-medium
+           text-primary bg-primary/10 px-2 py-0.5 rounded-full;
+  }
+
+  .badge-closed {
+    @apply inline-flex items-center gap-1 text-xs font-medium
+           text-muted bg-white/5 px-2 py-0.5 rounded-full;
+  }
+}
+
+/* Balance counter animation */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.balance-animate { animation: countUp 0.3s ease-out; }
+
+/* Event row slide-in — the signature element */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); background: rgba(99,102,241,0.08); }
+  to   { opacity: 1; transform: translateX(0);    background: transparent; }
+}
+.event-row-enter { animation: slideInRight 0.4s ease-out forwards; }
+
+/* Pulse dot for live indicator */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2);   opacity: 0; }
+}
+.live-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #10B981;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
