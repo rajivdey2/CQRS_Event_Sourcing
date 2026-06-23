@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 import logging
 import asyncio
+import os
+import re
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,11 +31,11 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-async def _wait_for_db(retries: int = 10, delay: float = 3.0) -> None:
-    """
-    Render starts the web service before the managed Postgres is fully ready.
-    Retry the connection with backoff so startup doesn't fail on a race.
-    """
+async def _wait_for_db(
+    retries: int = int(os.getenv("DB_RETRIES", "20")),
+    delay: float = float(os.getenv("DB_RETRY_DELAY", "5")),
+) -> None:
+    logger.info("Connecting to DB (up to %d attempts)…", retries)
     for attempt in range(1, retries + 1):
         try:
             async with engine.connect() as conn:
@@ -47,27 +49,41 @@ async def _wait_for_db(retries: int = 10, delay: float = 3.0) -> None:
             await asyncio.sleep(delay)
 
 
+def _split_sql(ddl: str) -> list[str]:
+    """
+    Split a multi-statement SQL file into individual statements.
+    asyncpg cannot execute multiple statements in one prepared call.
+    Strips comments and blank statements.
+    """
+    # Remove single-line comments
+    ddl = re.sub(r'--[^\n]*', '', ddl)
+    # Split on semicolons
+    statements = [s.strip() for s in ddl.split(';')]
+    # Filter out empty strings
+    return [s for s in statements if s]
+
+
 async def _init_schema() -> None:
-    """
-    Run init.sql on startup — idempotent (IF NOT EXISTS throughout).
-    Safe to run on every cold start; Render free tier spins down regularly.
-    """
-    import os
     sql_path = os.path.join(os.path.dirname(__file__), "..", "init.sql")
     if not os.path.exists(sql_path):
-        logger.warning("init.sql not found at %s — skipping schema init", sql_path)
+        logger.warning("init.sql not found — skipping schema init")
         return
+
     with open(sql_path) as f:
         ddl = f.read()
+
+    statements = _split_sql(ddl)
+    logger.info("Running %d schema statements…", len(statements))
+
     async with engine.begin() as conn:
-        await conn.execute(text(ddl))
+        for stmt in statements:
+            await conn.execute(text(stmt))
+
     logger.info("Schema initialised")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup ───────────────────────────────────────────────────────────────
-    logger.info("Connecting to database: %s", settings.async_database_url[:40] + "…")
     await _wait_for_db()
     await _init_schema()
 
@@ -76,13 +92,11 @@ async def lifespan(app: FastAPI):
 
     for event_type in ("AccountOpened", "MoneyDeposited", "MoneyWithdrawn", "AccountClosed"):
         event_bus.subscribe(event_type, balance_proj)
-
     for event_type in ("AccountOpened", "MoneyDeposited", "MoneyWithdrawn"):
         event_bus.subscribe(event_type, transaction_proj)
 
     logger.info("Event bus wired — projectors registered")
     yield
-    # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("Shutting down")
     await engine.dispose()
 
@@ -94,7 +108,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -103,13 +116,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(command_routes.router, prefix="/api")
 app.include_router(query_routes.router,  prefix="/api")
 app.include_router(admin_routes.router,  prefix="/api")
 
 
-# ── Global exception handlers ─────────────────────────────────────────────────
 @app.exception_handler(AccountNotFoundError)
 async def not_found(_: Request, exc: AccountNotFoundError):
     return JSONResponse(status_code=404, content={"detail": str(exc)})
@@ -131,7 +142,6 @@ async def concurrency_conflict(_: Request, exc: ConcurrencyConflictError):
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
-# ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/health", tags=["ops"])
 async def health():
     return {"status": "ok"}
