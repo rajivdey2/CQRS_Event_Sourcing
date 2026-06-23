@@ -33,4 +33,4 @@ Store domain events as the source of truth (event sourcing). Current state
 - **Audit log table alongside CRUD model** — duplicates data, two sources of
   truth can drift, harder to replay
 - **CDC (Change Data Capture) from PostgreSQL WAL** — powerful but higher ops
-  overhead; overkill for a portfolio project
+  overhead; overkill for a portfolio projectgit branch -M main
