@@ -2,7 +2,8 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://cqrs-ledger-api.onrender.com/api/:path*"
+      "destination": "https://cqrs-event-sourcing.onrender.com/api/:path*"
+                                                            
     },
     {
       "source": "/(.*)",
