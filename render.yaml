@@ -26,4 +26,8 @@ databases:
   - name: cqrs-ledger-db
     plan: free
     region: oregon
+<<<<<<< HEAD
     postgresMajorVersion: 16
+=======
+    postgresMajorVersion: "16"
+>>>>>>> 13aad06 (feat: CQRS + Event Sourcing ledger)
